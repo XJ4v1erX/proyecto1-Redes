@@ -1,0 +1,2 @@
+customtkinter==5.1.3    # Version of tkinter that works with Python 3.8 or higher
+slixmpp==1.7.1          # Library for XMPP communication
