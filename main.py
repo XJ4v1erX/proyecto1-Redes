@@ -10,8 +10,8 @@ class XMPPClientApp(ctk.CTk):
         super().__init__()
 
         # Configuración de la ventana principal
-        self.title("XMPP Client")
-        self.geometry("600x400")
+        self.title(" Rami XMPP Client")
+        self.geometry("750x400")
 
         # Variable para guardar la vista actual
         self.current_view = None

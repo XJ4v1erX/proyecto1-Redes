@@ -2,29 +2,30 @@ import customtkinter as ctk
 from tkinter import messagebox
 from client.account_manager import AccountManager
 from ui.toast_view import show_toast
+from ui.fonts import FONTS
 
 class LoginView(ctk.CTkFrame):
     def __init__(self, master):
         super().__init__(master)
 
         # Título de la vista
-        self.label = ctk.CTkLabel(self, text="Login to XMPP", font=("Arial", 20))
+        self.label = ctk.CTkLabel(self, text="Login to XMPP", font=FONTS["TITLE"])
         self.label.pack(pady=20)
 
         # Campo para ingresar el nombre de usuario
-        self.username_entry = ctk.CTkEntry(self, placeholder_text="Username")
+        self.username_entry = ctk.CTkEntry(self, placeholder_text="Username", font=FONTS["TEXT"])
         self.username_entry.pack(pady=10)
 
         # Campo para ingresar la contraseña
-        self.password_entry = ctk.CTkEntry(self, placeholder_text="Password", show="*")
+        self.password_entry = ctk.CTkEntry(self, placeholder_text="Password", show="*", font=FONTS["TEXT"])
         self.password_entry.pack(pady=10)
 
         # Botón de inicio de sesión
-        self.login_button = ctk.CTkButton(self, text="Login", command=self.login)
+        self.login_button = ctk.CTkButton(self, text="Login", command=self.login, font=FONTS["BUTTON"])
         self.login_button.pack(pady=10)
 
         # Botón para regresar al menú principal
-        self.back_button = ctk.CTkButton(self, text="Back", command=self.go_back)
+        self.back_button = ctk.CTkButton(self, text="Back", command=self.go_back, font=FONTS["BUTTON"])
         self.back_button.pack(pady=10)
 
     def login(self):

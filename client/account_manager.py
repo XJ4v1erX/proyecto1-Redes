@@ -3,6 +3,7 @@ import slixmpp
 from slixmpp.exceptions import IqError, IqTimeout
 from tkinter import messagebox
 import threading
+from ui.toast_view import show_toast
 
 class AccountManager:
     def __init__(self):
@@ -13,7 +14,7 @@ class AccountManager:
     def register_account(self, username, password):
         """Registrar una nueva cuenta en el servidor XMPP usando WebSocket."""
         if not self._validate_jid(username):
-            #messagebox.showerror("Invalid JID", "The username must be a valid JID, e.g., prueba@alumchat.lol")
+            show_toast("Invalid JID", "The username must be a valid JID, e.g., prueba@alumchat.lol")
             return False
 
         #messagebox.showinfo("Connecting", "Connecting to the server. Please wait...")
