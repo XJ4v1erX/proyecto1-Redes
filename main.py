@@ -1,37 +1,38 @@
-import customtkinter as ctk
+import tkinter as tk
 from ui.main_view import MainView
+from ui.login_view import LoginView
+from ui.register_view import RegisterView
+from ui.chat_view import ChatView
 
-# Configurar el tema y las opciones de la interfaz
-ctk.set_appearance_mode("System")  # Modo de apariencia (System, Dark, Light)
-ctk.set_default_color_theme("blue")  # Tema de color (blue, green, dark-blue)
-
-class XMPPClientApp(ctk.CTk):
+class Application:
     def __init__(self):
-        super().__init__()
+        self.root = tk.Tk()
+        self.show_main_view()
 
-        # Configuración de la ventana principal
-        self.title(" Rami XMPP Client")
-        self.geometry("750x400")
+    def show_main_view(self):
+        self.clear_root()
+        MainView(self.root, on_login=self.show_login_view, on_register=self.show_register_view)
 
-        # Variable para guardar la vista actual
-        self.current_view = None
+    def show_login_view(self):
+        self.clear_root()
+        LoginView(self.root, on_login_success=self.show_chat_view, on_back=self.show_main_view)
 
-        # Inicializar la vista principal (main menu)
-        self.main_view = MainView(self)
-        self.change_view(self.main_view)
+    def show_register_view(self):
+        self.clear_root()
+        RegisterView(self.root, on_register_success=self.show_login_view, on_back=self.show_main_view)
 
-    def change_view(self, view):
-        """Cambiar entre las diferentes vistas de la aplicación."""
-        if self.current_view is not None:
-            self.current_view.pack_forget()  # Esconde la vista actual sin destruirla
+    def show_chat_view(self, jid):
+        self.clear_root()
+        chat_manager = None  # Aquí deberías inicializar tu ChatManager
+        ChatView(self.root, jid, chat_manager)
 
-        self.current_view = view
-        self.current_view.pack(fill="both", expand=True)
+    def clear_root(self):
+        for widget in self.root.winfo_children():
+            widget.destroy()
 
-# Función principal para iniciar la aplicación
-def initialize_app():
-    app = XMPPClientApp()
-    app.mainloop()
+    def run(self):
+        self.root.mainloop()
 
 if __name__ == "__main__":
-    initialize_app()
+    app = Application()
+    app.run()
