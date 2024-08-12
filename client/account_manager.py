@@ -1,160 +1,68 @@
+import websockets
 import asyncio
-import slixmpp
-from slixmpp.exceptions import IqError, IqTimeout
-from tkinter import messagebox
-import threading
-from ui.toast_view import show_toast
 
-class AccountManager:
-    def __init__(self):
-        self.server = "alumchat.lol"
-        self.port = 5222
-        self.websocket_url = "ws://alumchat.lol:7070/ws/"
+class XMPPAccountManager:
+    def __init__(self, jid, password, websocket_uri="ws://alumchat.lol:7070/ws/"):
+        self.jid = jid
+        self.password = password
+        self.websocket_uri = websocket_uri
 
-    def register_account(self, username, password):
-        """Registrar una nueva cuenta en el servidor XMPP usando WebSocket."""
-        if not self._validate_jid(username):
-            show_toast("Invalid JID", "The username must be a valid JID, e.g., prueba@alumchat.lol")
-            return False
-
-        #messagebox.showinfo("Connecting", "Connecting to the server. Please wait...")
-
-        client = XMPPRegister(username, password)
-        connection_thread = threading.Thread(target=self._connect_and_process, args=(client,))
-        connection_thread.start()
-
-        return client.is_registered
-
-    def login(self, username, password):
-        """Iniciar sesión con una cuenta existente en el servidor XMPP usando WebSocket."""
-        if not self._validate_jid(username):
-            #messagebox.showerror("Invalid JID", "The username must be a valid JID, e.g., prueba@alumchat.lol")
-            return False
-
-        #messagebox.showinfo("Connecting", "Connecting to the server. Please wait...")
-
-        client = XMPPClient(username, password)
-        connection_thread = threading.Thread(target=self._connect_and_process, args=(client,))
-        connection_thread.start()
-
-        return client.is_logged_in
-
-    def _connect_and_process(self, client):
-        """Conectar al servidor y procesar la conexión en un hilo separado."""
-        loop = asyncio.new_event_loop()  # Crear un nuevo bucle de eventos
-        asyncio.set_event_loop(loop)
+    async def login(self):
+        """ Inicia sesión usando WebSockets """
         try:
-            loop.run_until_complete(client.connect(self.websocket_url))  # Conexión usando WebSocket
-            loop.run_until_complete(client.process(forever=False))  # Procesar hasta desconexión
+            async with websockets.connect(self.websocket_uri) as websocket:
+                # Enviar las credenciales de inicio de sesión
+                login_payload = f"<auth><jid>{self.jid}</jid><password>{self.password}</password></auth>"
+                await websocket.send(login_payload)
+
+                # Recibir la respuesta del servidor
+                response = await websocket.recv()
+                if "<success>" in response:
+                    print(f"Login successful for {self.jid}")
+                    return True
+                else:
+                    print(f"Login failed for {self.jid}")
+                    return False
         except Exception as e:
-            messagebox.showerror("Connection Error", f"Failed to connect to the server: {e}")
-        finally:
-            loop.close()  # Cerrar el bucle de eventos
-
-    def _validate_jid(self, jid):
-        """Verifica si el JID tiene un formato válido."""
-        if "@" not in jid:
+            print(f"Error during WebSocket connection: {e}")
             return False
-        return True
 
-
-# Clase para registrar cuentas nuevas
-class XMPPRegister(slixmpp.ClientXMPP):
-    def __init__(self, jid, password):
-        super().__init__(jid, password)
-        self.is_registered = False
-
-        # Conectar el evento de registro exitoso
-        self.add_event_handler("register", self.register)
-
-        # Manejar la señal de éxito o error en el registro
-        self.add_event_handler("session_start", self.session_start)
-        self.add_event_handler("failed_auth", self.failed_auth)
-
-        # Manejar errores y desconexiones
-        self.add_event_handler("disconnected", self.disconnected)
-        self.add_event_handler("connection_failed", self.connection_failed)
-
-    def session_start(self, event):
+    async def register_account(self):
+        """ Registrar una nueva cuenta en el servidor usando WebSockets """
         try:
-            self.send_presence()
-            self.get_roster()
+            async with websockets.connect(self.websocket_uri) as websocket:
+                # Enviar la solicitud de registro con los detalles de la cuenta
+                register_payload = f"<register><jid>{self.jid}</jid><password>{self.password}</password></register>"
+                await websocket.send(register_payload)
 
-            self.is_registered = True
-            messagebox.showinfo("Registration", "Account registered successfully!")
-            self.disconnect()
+                # Recibir la respuesta del servidor
+                response = await websocket.recv()
+                if "<success>" in response:
+                    print("Account registration successful.")
+                    return True
+                else:
+                    print("Account registration failed.")
+                    return False
+        except Exception as e:
+            print(f"Error during WebSocket connection: {e}")
+            return False
 
-        except IqError as e:
-            messagebox.showerror("Registration Error", f"Error during registration: {e}")
-            self.is_registered = False
-
-        except IqTimeout:
-            messagebox.showerror("Timeout Error", "Timeout while trying to register.")
-            self.is_registered = False
-
-    def failed_auth(self, event):
-        """Manejar fallos en la autenticación."""
-        messagebox.showerror("Registration Failed", "Registration failed due to incorrect credentials.")
-        self.is_registered = False
-
-    def register(self, iq):
-        """Manejar el evento de registro."""
+    async def logout(self):
+        """ Cerrar sesión usando WebSockets """
         try:
-            self.disconnect()
-        except IqError as e:
-            messagebox.showerror("Registration Error", f"Registration error: {e}")
-        except IqTimeout:
-            messagebox.showerror("Timeout Error", "Timeout during registration.")
+            async with websockets.connect(self.websocket_uri) as websocket:
+                # Enviar la solicitud de cierre de sesión
+                logout_payload = f"<logout><jid>{self.jid}</jid></logout>"
+                await websocket.send(logout_payload)
 
-    def disconnected(self, event):
-        """Manejar la desconexión del servidor."""
-        messagebox.showwarning("Disconnected", "Disconnected from the server.")
-
-    def connection_failed(self, event):
-        """Manejar error de conexión."""
-        messagebox.showerror("Connection Failed", "Failed to connect to the server.")
-
-
-# Clase para iniciar sesión con una cuenta existente
-class XMPPClient(slixmpp.ClientXMPP):
-    def __init__(self, jid, password):
-        super().__init__(jid, password)
-        self.is_logged_in = False
-
-        # Manejar el inicio de sesión exitoso
-        self.add_event_handler("session_start", self.session_start)
-        self.add_event_handler("failed_auth", self.failed_auth)
-
-        # Manejar errores y desconexiones
-        self.add_event_handler("disconnected", self.disconnected)
-        self.add_event_handler("connection_failed", self.connection_failed)
-
-    def session_start(self, event):
-        """Acciones a realizar cuando el inicio de sesión es exitoso."""
-        try:
-            self.send_presence()
-            self.get_roster()
-            self.is_logged_in = True
-            messagebox.showinfo("Login", "Logged in successfully!")
-            self.disconnect()
-
-        except IqError as e:
-            messagebox.showerror("Login Error", f"Error during login: {e}")
-            self.is_logged_in = False
-
-        except IqTimeout:
-            messagebox.showerror("Timeout Error", "Timeout during login.")
-            self.is_logged_in = False
-
-    def failed_auth(self, event):
-        """Manejar el fallo en el inicio de sesión."""
-        messagebox.showerror("Login Failed", "Login failed due to incorrect credentials.")
-        self.is_logged_in = False
-
-    def disconnected(self, event):
-        """Manejar la desconexión del servidor."""
-        messagebox.showwarning("Disconnected", "Disconnected from the server.")
-
-    def connection_failed(self, event):
-        """Manejar error de conexión."""
-        messagebox.showerror("Connection Failed", "Failed to connect to the server.")
+                # Recibir la respuesta del servidor
+                response = await websocket.recv()
+                if "<success>" in response:
+                    print("Logout successful.")
+                    return True
+                else:
+                    print("Logout failed.")
+                    return False
+        except Exception as e:
+            print(f"Error during WebSocket connection: {e}")
+            return False
