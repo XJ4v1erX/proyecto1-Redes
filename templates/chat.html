@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XMPP Chat</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+        .container {
+            display: flex;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+        .sidebar {
+            width: 300px;
+            background-color: #f8f9fa;
+            border-right: 1px solid #ddd;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+        }
+        .sidebar h3 {
+            margin-top: 0;
+        }
+        .contacts, .groups, .requests {
+            margin-bottom: 20px;
+        }
+        .contacts ul, .groups ul, .requests ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .contacts ul li, .groups ul li {
+            margin-bottom: 10px;
+        }
+        .contacts ul li a {
+            text-decoration: none;
+            color: black;
+            display: flex;
+            align-items: center;
+        }
+        .contacts ul li a span {
+            margin-left: 10px;
+        }
+        .groups button, .contacts button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        .groups button:hover, .contacts button:hover {
+            background-color: #0056b3;
+        }
+        .chat-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: white;
+        }
+        .chat-header {
+            padding: 15px;
+            background-color: #007bff;
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .chat-header div {
+            margin-right: 10px;
+        }
+        .chat-messages {
+            flex-grow: 1;
+            padding: 15px;
+            overflow-y: auto;
+        }
+        .chat-messages p {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #f1f1f1;
+            border-radius: 5px;
+        }
+        .chat-input-container {
+            display: flex;
+            padding: 15px;
+            border-top: 1px solid #ddd;
+            align-items: center;
+        }
+        .chat-input-container input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .chat-input-container button {
+            padding: 10px;
+            margin-left: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .chat-input-container button.upload {
+            background-color: #28a745;
+        }
+        .chat-input-container button:hover {
+            background-color: #0056b3;
+        }
+        .chat-input-container button.upload:hover {
+            background-color: #218838;
+        }
+        .status-container {
+            margin-top: auto;
+        }
+        .status-container button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            background-color: #6c757d;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        .status-container button.logout {
+            background-color: #dc3545;
+        }
+        .status-container button.logout:hover {
+            background-color: #c82333;
+        }
+        .status-container button:hover {
+            background-color: #5a6268;
+        }
+        /* Oculta el campo de archivo real */
+        #fileInput {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <h3>Contactos</h3>
+            <div class="contacts">
+                <button>Agregar contacto</button>
+                <ul>
+                    <li><a href="#"><span>Chat001</span></a></li>
+                    <li><a href="#"><span>Chat002</span></a></li>
+                    <li><a href="#"><span>Chat003</span></a></li>
+                </ul>
+            </div>
+            <h3>Grupos</h3>
+            <div class="groups">
+                <button>Unirse a un grupo</button>
+                <ul>
+                    <li>No hay grupos disponibles</li>
+                </ul>
+            </div>
+            <h3>Solicitudes de amistad</h3>
+            <div class="requests">
+                <ul>
+                    <li>No hay solicitudes</li>
+                </ul>
+            </div>
+            <!-- Status and actions -->
+            <div class="status-container">
+                <button>Status: Conectado</button>
+                <button class="logout">Log out</button>
+                <button class="logout">Delete Account</button>
+            </div>
+        </div>
+        <!-- Chat section -->
+        <div class="chat-container">
+            <div class="chat-header">
+                <div>Status: Connected</div>
+                <div>Logged in as: username@example.com</div>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <!-- Mensajes del chat -->
+                <p><strong>Usuario:</strong> Hola, ¿cómo estás?</p>
+                <p><strong>Tú:</strong> ¡Bien, gracias!</p>
+            </div>
+            <div class="chat-input-container">
+                <input type="text" id="messageInput" placeholder="Escribe tu mensaje...">
+                <button onclick="sendMessage()">Send</button>
+                <button class="upload" onclick="document.getElementById('fileInput').click()">Subir archivo</button>
+                <input type="file" id="fileInput" onchange="uploadFile()">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const fileInput = document.getElementById('fileInput');
+
+        // Función para enviar un mensaje
+        function sendMessage() {
+            const messageText = messageInput.value;
+
+            if (messageText.trim() !== "") {
+                // Añadir el mensaje al área de mensajes
+                const messageElement = document.createElement('p');
+                messageElement.innerHTML = `<strong>Tú:</strong> ${messageText}`;
+                chatMessages.appendChild(messageElement);
+
+                // Limpiar el campo de entrada
+                messageInput.value = "";
+
+                // Desplazar hacia abajo
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        }
+
+        // Función para manejar la subida de archivos
+        function uploadFile() {
+            const file = fileInput.files[0];
+            if (file) {
+                const fileMessageElement = document.createElement('p');
+                fileMessageElement.innerHTML = `<strong>Tú:</strong> Has subido un archivo: ${file.name}`;
+                chatMessages.appendChild(fileMessageElement);
+
+                // Desplazar hacia abajo
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        }
+    </script>
+</body>
+</html>
