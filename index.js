@@ -53,10 +53,43 @@ function login(username, password) {
 }
 // Register
 function register() {
-    console.log("Register");
-    showMenu();
-
-}
+    cliente.connect(5222, 'alumchat.lol', function() {
+        //console.log('Conectado al servidor XMPP');
+        cliente.write("<stream:stream to='alumchat.lol' xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams' version='1.0'>");
+    });
+  
+    // ask for username and password
+    rl.question("User: ", (username) => {
+      rl.question("Pasword: ", (password) => {
+        cliente.on('data', function(data) {
+            if (data.toString().includes('<stream:features>')) {
+                // Enviar consulta de registro
+                const xmlRegister = `
+                <iq type="set" id="reg_1" mechanism='PLAIN'>
+                  <query xmlns="jabber:iq:register">
+                    <username>${username}</username>
+                    <password>${password}</password>
+                  </query>
+                </iq>
+                `;
+                cliente.write(xmlRegister);
+            } else if (data.toString().includes('<iq type="result"')) {
+                // Successfull register
+                console.log('User registered successfully');
+                showMenu();
+            } else if (data.toString().includes('<iq type="error"')) {
+                // Error at register
+                console.log('Error at register', data.toString());
+            }
+        });
+      });
+    });
+  
+  
+    cliente.on('close', function() {
+        console.log('Conection closed');
+    });
+  }
     
 
 
