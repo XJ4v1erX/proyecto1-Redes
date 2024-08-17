@@ -1,0 +1,26 @@
+{
+  "name": "proyecto1-redes",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@xmpp/client": "^0.13.1",
+    "@xmpp/client-core": "^0.13.1",
+    "@xmpp/connection": "^0.13.1",
+    "@xmpp/debug": "^0.13.0",
+    "@xmpp/resolve": "^0.13.1",
+    "node-fetch": "^2.6.1",
+    "node-xmpp": "^1.1.0",
+    "simple-xmpp": "^2.3.1",
+    "socket.io-client": "^4.7.1",
+    "stanza": "^12.18.0",
+    "stanza.io": "^10.3.4",
+    "strophe": "^1.2.4",
+    "xml2js": "^0.6.1"
+  }
+}
