@@ -1,4 +1,5 @@
-
+const net = require("net");
+const cliente = new net.Socket();
 const readline = require("readline");
 
 // input reader
@@ -43,18 +44,25 @@ function showMenu() {
     }
   });
 }
-
-
+  
 // Login
-function login(username, password) {
-  console.log("Login");
-  showMenu();
+async function login(username, password) {
+
+    const xmpp = client({
+        service: "xmpp://alumchat.lol:5222",
+        domain: "alumchat.lol",
+        username: username,
+        password: password,
+        terminal: true,
+        tls: {rejectUnauthorized: false,},
+    });
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
+
 
 }
 // Register
 function register() {
     cliente.connect(5222, 'alumchat.lol', function() {
-        //console.log('Conectado al servidor XMPP');
         cliente.write("<stream:stream to='alumchat.lol' xmlns='jabber:client' xmlns:stream='http://etherx.jabber.org/streams' version='1.0'>");
     });
   
@@ -90,7 +98,6 @@ function register() {
         console.log('Conection closed');
     });
   }
-    
 
 
 // call initial menu
