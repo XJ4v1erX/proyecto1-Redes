@@ -1,6 +1,7 @@
 const net = require("net");
 const cliente = new net.Socket();
 const readline = require("readline");
+const { client, xml, jid } = require("@xmpp/client");
 
 // input reader
 const rl = readline.createInterface({
@@ -23,7 +24,6 @@ function showMenu() {
         rl.question("User: ", (username) => {
           rl.question("Pasword: ", (password) => {
             login(username, password);
-        
           })})
         break;
 
@@ -48,6 +48,7 @@ function showMenu() {
 // Login
 async function login(username, password) {
   
+  // XMPP client
   const xmpp = client({
     service: "xmpp://alumchat.lol:5222",
     domain: "alumchat.lol",
@@ -56,15 +57,24 @@ async function login(username, password) {
     terminal: true,
     tls: {rejectUnauthorized: false},
   });
+
+  // Disable TLS
   process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
-   xmpp.on("error", (err) => {
+  // Error handling
+  xmpp.on("error", (err) => {
     console.error(err);
   });
 
+  // Connection
   xmpp.on("online", async (address) => {
   
+    const presence = xml('presence', { type: 'available' });
+    xmpp.send(presence);
+
     const mainMenu = () => {
+
+      const soliAmi = []
 
     async function unirseASala(nombreSala) {
       console.log("Uniendo a la sala:= ")
@@ -94,38 +104,217 @@ async function login(username, password) {
     }
     
       const opciones = () => {
-        console.log("1. Enseñar todos los usuarios y su estado");
-        console.log("2. Agregar un usuario a mis contactos");
-        console.log("3. Mostrar detalles de un contacto");
-        console.log("4. Comunicación 1 a 1 con cualquier usuario/contacto");
-        console.log("5. Participar en conversaciones grupales");
-        console.log("6. Definir un mensaje de presencia");
-        console.log("7. Centro de notificaciones");
-        console.log("8. Eliminar cuenta");
-        console.log("9. Cerrar sesión");
+        console.log("1. Show all users and their status");
+        console.log("2. Add a user to your contacts");
+        console.log("3. Show details of a contact");
+        console.log("4. Communicate with a user/contact");
+        console.log("5. Participate in group conversations");
+        console.log("6. Defining a presence message");
+        console.log("7. Notification center");
+        console.log("8. Delete account");
+        console.log("9. Log out");
       };
       
       opciones()
       
 
 
-      rl.question("¿Qué opción deseas?: ", async (answer) => {
+      rl.question("Select an option: ", async (answer) => {
         switch (answer) {
           case '1':
-            console.log("Mostrando todos los usuarios y su estado...");
+            console.log('Showing all users and their status...');
+
+            // Request roster
+            const rosterRequest = xml(
+              'iq',
+              { type: 'get', id: 'roster' },
+              xml('query', { xmlns: 'jabber:iq:roster' })
+            );
+
+            // Sending roster request
+            xmpp.send(rosterRequest).then(() => {
+              //console.log('Solicitud de roster enviada correctamente.');
+            }).catch((err) => {
+              console.error('Error al enviar la solicitud de roster:', err);
+            });
+
+            // Handling roster response
+            xmpp.on('stanza', (stanza) => {
+              if (stanza.is('iq') && stanza.attrs.type === 'result') {
+                const query = stanza.getChild('query', 'jabber:iq:roster');
+                const contacts = query.getChildren('item');
+
+                // Print contacts
+                console.log('Contact list:');
+                contacts.forEach((contact) => {
+                  const jid = contact.attrs.jid;
+                  const name = contact.attrs.name || jid.split('@')[0];
+                  const subscription = contact.attrs.subscription;
+
+                  console.log(`- JID: ${jid}, Name: ${name}, Status: ${subscription}`);
+                  
+                })
+                
+                xmpp.on('stanza', stanza => {
+  
+                  // console.log(stanza)
+  
+                  if (stanza.is('presence')) {
+                    const from = stanza.attrs.from;
+                    const type = stanza.attrs.type;
+                    const show = stanza.getChildText('show');
+
+                    // Si el tipo es undefined, entonces es online.
+                    if (type === undefined) {
+                      console.log(`Presence from ${from}: type=online`);
+                    }else{
+                      console.log(`Presence from ${from}: type=${type}, show=${show}`);
+                    }
+
+                  }
+                });
+              }
+            });
             
             mainMenu();
             break;
 
           case "2":
-            console.log("Agregando un usuario a tus contactos...");
 
+            console.log("1. Add a user to your contacts");
+            console.log("2. Accept requests");
+            console.log("3. Return to main menu");
+
+            rl.question("Select an option: ", async (answer) => {
+              switch (answer) {
+                case '1':
+                  console.log("Adding a user to your contacts...");
+                  rl.question("JID of the user you want to add: ",  (userJID) => {
+
+                    userJID = userJID + "@alumchat.lol"
+
+                    const presence = xml(
+                      'presence',
+                      { to: userJID, type: 'subscribe' }
+                    );
+      
+                    xmpp.send(presence).then(() => {
+                      console.log(`Request sent to: ${userJID}`);
+                      mainMenu(); 
+                    }).catch((err) => {
+                      console.error('Error at sending request:', err);
+                      mainMenu(); 
+                    });
+                  });
+                  break;
+                case '2':
+                  console.log("Accepting requests...");
+
+                  if (soliAmi.length === 0) {
+                    console.log("There are no friend requests.");
+                  } else {
+                    console.log("Friend requests received:", soliAmi);
+                  
+                    rl.question('Do you want to accept a friend request? (y/n): ', async (answer) => {
+
+                      if (answer.toLowerCase() === 'y') {
+                        rl.question('Enter the name of the person you want to accept: ', async (nombrePersona) => {
+                          const jidAceptado = `${nombrePersona}@alumchat.lol`;
+                  
+                          const solicitud = soliAmi.find((solicitud) => solicitud === jidAceptado);
+
+                          console.log("Request found:", solicitud);
+                    
+                          if (solicitud) {
+                            await xmpp.send(xml('presence', { to: solicitud, type: 'subscribed' }));
+                            console.log(`Accepted subscription request from: ${solicitud}`);
+
+                            const index = soliAmi.indexOf(solicitud);
+                            if (index > -1) {
+                              soliAmi.splice(index, 1);
+                            }
+
+                          } else {
+                            console.log("There is no request from that user.");
+                          }
+                      })
+                    }});
+                  }
+
+                  xmpp.on('stanza', async (stanza) => {
+                    const fromJid = stanza.attrs.from;
+                    
+                    if (stanza.is('presence') && stanza.attrs.type === 'subscribe') {
+                      // Preguntado si se quiere aceptar o no la solicitud.
+                      rl.question(` Do you want to accept the subscription request from ${fromJid}? (y/n): `, async (answer) => {
+                        const response = answer.toLowerCase();
+                        if (response === 'y') {
+                          // Aceptar la solicitud de suscripción
+                          await xmpp.send(xml('presence', { to: fromJid, type: 'subscribed' }));
+                          console.log(`Friend request accepted from ${fromJid}`);
+                          mainMenu()
+                        } else {
+                          // Rechazar la solicitud de suscripción
+                          await xmpp.send(xml('presence', { to: fromJid, type: 'unsubscribed' }));
+                          console.log(`Friend request rejected from ${fromJid}`);
+                          mainMenu()
+                        }
+                      }
+                    )};
+                  });
+                  break
+                case "3":
+                  console.log("Returning to main menu...");
+                  mainMenu();
+                  break;
+                default:
+                  console.log("Invalid option.");
+                  mainMenu(); 
+              }
+            });
             break
-          // Mostrar detalles de un contacto
+          
           case "3":
-            console.log("Mostrando detalles de un contacto...");
+            console.log("Showing contacts details...");
+            rl.question("JID of the contact you want to see: ", (contactJID) => {
+              const newC = contactJID + "@alumchat.lol";
+
+              const presenceRequest = xml('presence', { to: contactJID });
+              xmpp.send(presenceRequest)
+              xmpp.on('stanza', (stanza) => {
+                if (stanza.is('iq') && stanza.attrs.type === 'result') {
+                  const query = stanza.getChild('query', 'jabber:iq:roster');
+                  const contacts = query.getChildren('item');
+          
+                  const contact = contacts.find((contact) => contact.attrs.jid === newC);
+          
+                  if (contact) {
+                    console.log(`Details of the contact ${contactJID}:`);
+                    console.log(`- JID: ${contact.attrs.jid}`);
+                    console.log(`- Name: ${contact.attrs.name || contact.attrs.jid}`);
+                  } else {
+                    console.log(`The contact ${contactJID} is not in your contact list.`);
+                  }
+                }
+              });
+          
+              const rosterRequest = xml(
+                'iq',
+                { type: 'get', id: 'roster' },
+                xml('query', { xmlns: 'jabber:iq:roster' })
+              );
+          
+              // Enviar la solicitud de roster al servidor
+              xmpp.send(rosterRequest).then(() => {
+                //console.log('Roster request sent successfully.');
+              }).catch((err) => {
+                console.error('Error sending roster request:', err);
+              });
+            });
+
             mainMenu()
             break;
+            
           case "4":
             console.log("Comunicándote con un usuario/contacto...");
                     
