@@ -94,13 +94,34 @@ async function login(username, password) {
       console.log("Uniendo a sala de chat grupal...")
     }
     
+    function fileToBase64(filePath) {
+      const fs = require('fs');
+      const fileData = fs.readFileSync(filePath);
+      const base64Data = fileData.toString('base64');
+      return base64Data;
+    }
 
     async function enviarArchivo(room, filePath) {
-      console.log("Enviando archivo...")
+      
+      const base64File = fileToBase64(filePath);
+      const fileName = filePath.split('/').pop(); 
+      const message = xml(
+        'message',
+        { type: 'groupchat', to: room },
+        xml('body', {}, `file://${base64File}`),
+        xml('subject', {}, `Archivo: ${fileName}`)
+      );
+    
+      
+      await xmpp.send(message);
+
     }
 
     async function saveBase64ToFile(base64Data, filePath) {
-      console.log("Guardando archivo...")
+      const fs = require('fs');
+      const fileData = Buffer.from(base64Data, 'base64');
+      await fs.promises.writeFile(filePath, fileData);
+      console.log(`Archivo guardado en: ${filePath}`);
     }
     
       const opciones = () => {
@@ -316,7 +337,103 @@ async function login(username, password) {
             break;
             
           case "4":
-            console.log("Comunicándote con un usuario/contacto...");
+            console.log("Communicating with a user/contact...");
+            
+            rl.question("JID of the user you want to chat with: ", (userJID) => {
+              const newC = userJID + "@alumchat.lol";
+              chatWithUser(newC);
+            });
+            
+            async function chatWithUser(userJID) {
+              console.log(`Chatting with user: ${userJID}`);
+            
+                function handleIncomingMessages() {
+                  xmpp.on('stanza', async (stanza) => {
+                    if (stanza.is('message') && stanza.getChild('body')) {
+                      const from = stanza.attrs.from;
+                      const body = stanza.getChildText('body');
+                      const subject = stanza.getChildText('subject');
+                  
+                     
+                      if (body && (body.includes('Archivo:') || body.includes("File:"))) {
+                        console.log("File received");
+                        const fileName = body.slice(body.indexOf(':') + 1).trim();
+                        const base64Data = body.split('\n')[1].slice(7);
+                        const filePath = `./recibidos/${fileName}`;
+                      
+                        await saveBase64ToFile(base64Data, filePath);
+                      
+                        console.log(`Archivo recibido de ${from}: ${filePath}`);
+                      } else if (subject && (subject.includes('Archivo:') || subject.includes('File:'))) {
+                        console.log("File received");
+                        const fileName = subject.slice(subject.indexOf(':') + 1).trim();
+                        const base64Data = body.slice(7); 
+                        const filePath = `./recibidos/${fileName}`;
+                      
+                        await saveBase64ToFile(base64Data, filePath);
+                      
+                        console.log(`Archivo recibido de ${from}: ${filePath}`);
+                      } else if (body) {
+                        console.log(`${from}: ${body}`);
+                      }
+                    }
+                  });
+                }
+            
+              
+              handleIncomingMessages();
+            
+              
+              
+            
+              rl.setPrompt('You: ');
+              rl.prompt();
+            
+              rl.on('line', async (message) => {
+                if (message.trim() === 'exit') {
+                  mainMenu();
+                  rl.close();
+                } else if (message.trim() === 'file'){
+                  rl.question("Enter the file path: ", async (filePath) => {
+                    
+                    await enviarArchivoBase64(userJID, filePath);
+
+                    async function enviarArchivoBase64(contactJID, filePath) {
+                      
+                      const base64File = fileToBase64(filePath);
+                      const fileName = filePath.split('/').pop(); 
+
+                      const message = xml(
+                        'message',
+                        { type: 'chat', to: contactJID },
+                        xml('body', {}, `file://${base64File}`),
+                        xml('subject', {}, `Archivo: ${fileName}`)
+                      );
+
+                      await xmpp.send(message);
+                      
+                    }
+
+                    });
+                }
+                else {
+                  
+                  const messageToSend = xml(
+                    'message',
+                    { type: 'chat', to: userJID }, 
+                    xml('body', {}, message),
+                  );
+                  await xmpp.send(messageToSend);
+                }
+              });
+            
+              rl.on('close', () => {
+                console.log('Chat closed.');
+                mainMenu(); 
+              });
+            }
+            
+            break;
                     
           case "5":
             console.log("Participando en conversaciones grupales...");
@@ -340,12 +457,18 @@ async function login(username, password) {
     
           case "9":
           
-            console.log("Cerrando sesión...")
-        
+            console.log("Closing session...");
+
+            xmpp.stop().catch(console.error);
+              xmpp.on("offline", () => {
+                console.log("offline");
+                showMenu()
+              });
             break;
+            
           
           default:
-            console.log("Opción inválida.")
+            console.log("Invalid option. Try again.");
             mainMenu();
         }
       });
